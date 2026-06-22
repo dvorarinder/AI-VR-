@@ -626,6 +626,8 @@ document.getElementById('publishBtn').addEventListener('click',function(){
     if(data.message){throw new Error('טוקן לא תקין');}
     var sha=data.sha;
     var html=document.documentElement.outerHTML;
+    // מסירה את class open מהפאנל לפני שמירה
+    html=html.replace(/class="panel-overlay open"/g,'class="panel-overlay"').replace(/class="panel open"/g,'class="panel"');
     var encoded=btoa(unescape(encodeURIComponent(html)));
     return fetch('https://api.github.com/repos/dvorarinder/AI-VR-/contents/index.html',{method:'PUT',headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({message:'עדכון מהפאנל',content:encoded,sha:sha,branch:'main'})});
   })
