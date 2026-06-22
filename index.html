@@ -553,8 +553,10 @@ p{margin:0 0 .6em}a{color:var(--teal-d)}img{max-width:100%;display:block}
 <div class="panel__foot">
 <button class="pbtn pbtn--save" id="saveBtn"><svg><use href="#i-save"/></svg>שמירה</button>
 <button class="pbtn pbtn--ghost" id="exportBtn"><svg><use href="#i-export"/></svg>ייצוא</button>
+<button class="pbtn" id="publishBtn" style="background:#2c6f66;color:#fff;border-color:#2c6f66;width:100%;justify-content:center;margin-top:4px;">&#9650; פרסם לאתר החי</button>
 <button class="pbtn pbtn--ghost" id="importBtn"><svg><use href="#i-upload"/></svg>ייבוא</button>
 <button class="pbtn pbtn--ghost" id="resetBtn"><svg><use href="#i-reset"/></svg>איפוס</button>
+<button class="pbtn" id="publishBtn" style="background:#2c6f66;color:#fff;border-color:#2c6f66;width:100%;justify-content:center;margin-top:4px;font-weight:700;">&#9650; פרסם לאתר החי</button>
 <input type="file" id="importFile" accept="application/json" style="display:none">
 </div>
 </aside>
@@ -655,7 +657,9 @@ load();applyModel();
   var BRANCH = 'main';
   var FILE = 'index.html';
 
-  var panelFooter = document.querySelector('.panel__footer');
+  var panelFooter = document.getElementById('publishBtn');
+  if(panelFooter){ panelFooter.addEventListener('click', publishToGithub); }
+  function publishToGithub(){
   if(!panelFooter) return;
 
   var publishBtn = document.createElement('button');
