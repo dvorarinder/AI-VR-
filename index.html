@@ -553,7 +553,6 @@ p{margin:0 0 .6em}a{color:var(--teal-d)}img{max-width:100%;display:block}
 <div class="panel__foot">
 <button class="pbtn pbtn--save" id="saveBtn"><svg><use href="#i-save"/></svg>שמירה</button>
 <button class="pbtn pbtn--ghost" id="exportBtn"><svg><use href="#i-export"/></svg>ייצוא</button>
-<button class="pbtn" id="publishBtn" style="background:#2c6f66;color:#fff;border-color:#2c6f66;width:100%;justify-content:center;margin-top:4px;">&#9650; פרסם לאתר החי</button>
 <button class="pbtn pbtn--ghost" id="importBtn"><svg><use href="#i-upload"/></svg>ייבוא</button>
 <button class="pbtn pbtn--ghost" id="resetBtn"><svg><use href="#i-reset"/></svg>איפוס</button>
 <button class="pbtn" id="publishBtn" style="background:#2c6f66;color:#fff;border-color:#2c6f66;width:100%;justify-content:center;margin-top:4px;font-weight:700;">&#9650; פרסם לאתר החי</button>
@@ -624,6 +623,33 @@ document.getElementById('exportBtn').addEventListener('click',function(){capture
 document.getElementById('importBtn').addEventListener('click',function(){document.getElementById('importFile').click();});
 document.getElementById('importFile').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){try{model=Object.assign({text:{},img:{},videoUrl:"",team:null,transcript:null},JSON.parse(ev.target.result));if(!model.team)model.team=JSON.parse(JSON.stringify(DEFAULT_TEAM));if(!model.transcript)model.transcript=JSON.parse(JSON.stringify(DEFAULT_TRANSCRIPT));persist();applyModel();transcriptBuilt=false;buildPanel();toast('יובא ✓');}catch(err){toast('קובץ לא תקין');}};r.readAsText(f);});
 document.getElementById('resetBtn').addEventListener('click',function(){if(!confirm('לאפס הכל?'))return;try{localStorage.removeItem(KEY);}catch(e){}location.reload();});
+
+// פרסום לGitHub
+document.getElementById('publishBtn').addEventListener('click',function(){
+  var token=localStorage.getItem('gh_token');
+  if(!token){token=prompt('הזיני את GitHub Token (פעם אחת בלבד):');if(!token)return;localStorage.setItem('gh_token',token);}
+  var btn=document.getElementById('publishBtn');
+  btn.disabled=true;btn.textContent='מפרסם...';
+  captureText();
+  fetch('https://api.github.com/repos/dvorarinder/AI-VR-/contents/index.html?ref=main',{headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    if(data.message){throw new Error('טוקן לא תקין');}
+    var sha=data.sha;
+    var html=document.documentElement.outerHTML;
+    var encoded=btoa(unescape(encodeURIComponent(html)));
+    return fetch('https://api.github.com/repos/dvorarinder/AI-VR-/contents/index.html',{method:'PUT',headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({message:'עדכון מהפאנל',content:encoded,sha:sha,branch:'main'})});
+  })
+  .then(function(r){
+    if(r.ok){btn.textContent='פורסם! ✓';setTimeout(function(){btn.disabled=false;btn.innerHTML='&#9650; פרסם לאתר החי';},3000);}
+    else{throw new Error('שגיאה');}
+  })
+  .catch(function(e){
+    if(e.message==='טוקן לא תקין')localStorage.removeItem('gh_token');
+    btn.textContent='שגיאה — נסי שוב';btn.disabled=false;
+    setTimeout(function(){btn.innerHTML='&#9650; פרסם לאתר החי';},3000);
+  });
+});
 var toastTimer;function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove('show');},2200);}
 var pages=document.querySelectorAll('.page'),navLinks=document.querySelectorAll('.nav__link');
 function showPage(id){pages.forEach(function(p){p.classList.toggle('is-active',p.getAttribute('data-page')===id);});navLinks.forEach(function(l){l.classList.toggle('is-active',l.getAttribute('data-target')===id);});try{if(history.replaceState)history.replaceState(null,'','#'+id);}catch(e){}closeMenu();if(id==='tool')resetDemo();}
@@ -650,68 +676,6 @@ function stopRec(){recording=false;clearInterval(recTimer);recBtn.classList.remo
 recBtn.addEventListener('click',function(){if(recording){stopRec();recHint.textContent='הסתיים — עברו לשלב הבא';return;}recording=true;recSecs=0;recTime.textContent='00:00';recBtn.classList.add('is-rec');waveBars.classList.add('is-live');recHint.textContent='מקליט…';recTimer=setInterval(function(){recSecs++;recTime.textContent=fmt(recSecs);if(recSecs>=6){stopRec();recHint.textContent='הסתיים — עברו לשלב הבא';}},300);});
 function resetDemo(){if(recording)stopRec();recSecs=0;recTime.textContent='00:00';recHint.textContent='לחצו על המיקרופון';transcriptBuilt=false;var box=document.getElementById('transcript');if(box)box.innerHTML='';gotoStep(0);}
 load();applyModel();
-
-// ===== שמירה ישירה ל-GitHub =====
-(function(){
-  var REPO = 'dvorarinder/AI-VR-';
-  var BRANCH = 'main';
-  var FILE = 'index.html';
-
-  var panelFooter = document.getElementById('publishBtn');
-  if(panelFooter){ panelFooter.addEventListener('click', publishToGithub); }
-  function publishToGithub(){
-  if(!panelFooter) return;
-
-  var publishBtn = document.createElement('button');
-  publishBtn.className = 'btn';
-  publishBtn.style = 'width:100%;margin-top:8px;background:#2c6f66;border-color:#2c6f66;color:#fff;justify-content:center;';
-  publishBtn.innerHTML = '&#9650; פרסם לאתר החי';
-  panelFooter.appendChild(publishBtn);
-
-  publishBtn.addEventListener('click', function(){
-    var token = localStorage.getItem('gh_token');
-    if(!token){
-      token = prompt('הזיני את GitHub Token שלך (פעם אחת בלבד):');
-      if(!token) return;
-      localStorage.setItem('gh_token', token);
-    }
-
-    publishBtn.disabled = true;
-    publishBtn.textContent = 'מפרסם...';
-
-    fetch('https://api.github.com/repos/'+REPO+'/contents/'+FILE+'?ref='+BRANCH, {
-      headers: { 'Authorization': 'token '+token, 'Accept': 'application/vnd.github.v3+json' }
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      if(data.message){ throw new Error('טוקן לא תקין'); }
-      var sha = data.sha;
-      var htmlContent = document.documentElement.outerHTML;
-      var encoded = btoa(unescape(encodeURIComponent(htmlContent)));
-      return fetch('https://api.github.com/repos/'+REPO+'/contents/'+FILE, {
-        method: 'PUT',
-        headers: {
-          'Authorization': 'token '+token,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ message: 'עדכון מהפאנל', content: encoded, sha: sha, branch: BRANCH })
-      });
-    })
-    .then(function(r){
-      if(r.ok){
-        publishBtn.textContent = 'פורסם!';
-        setTimeout(function(){ publishBtn.disabled=false; publishBtn.innerHTML='&#9650; פרסם לאתר החי'; },3000);
-      } else { throw new Error('שגיאה'); }
-    })
-    .catch(function(e){
-      if(e.message==='טוקן לא תקין') localStorage.removeItem('gh_token');
-      publishBtn.textContent = 'שגיאה — נסי שוב';
-      publishBtn.disabled = false;
-      setTimeout(function(){ publishBtn.innerHTML='&#9650; פרסם לאתר החי'; },3000);
-    });
-  });
-})();
 
 // Embedded project images
 // Sub-images for home page
