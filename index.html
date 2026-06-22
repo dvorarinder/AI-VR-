@@ -649,6 +649,66 @@ recBtn.addEventListener('click',function(){if(recording){stopRec();recHint.textC
 function resetDemo(){if(recording)stopRec();recSecs=0;recTime.textContent='00:00';recHint.textContent='לחצו על המיקרופון';transcriptBuilt=false;var box=document.getElementById('transcript');if(box)box.innerHTML='';gotoStep(0);}
 load();applyModel();
 
+// ===== שמירה ישירה ל-GitHub =====
+(function(){
+  var REPO = 'dvorarinder/AI-VR-';
+  var BRANCH = 'main';
+  var FILE = 'index.html';
+
+  var panelFooter = document.querySelector('.panel__footer');
+  if(!panelFooter) return;
+
+  var publishBtn = document.createElement('button');
+  publishBtn.className = 'btn';
+  publishBtn.style = 'width:100%;margin-top:8px;background:#2c6f66;border-color:#2c6f66;color:#fff;justify-content:center;';
+  publishBtn.innerHTML = '&#9650; פרסם לאתר החי';
+  panelFooter.appendChild(publishBtn);
+
+  publishBtn.addEventListener('click', function(){
+    var token = localStorage.getItem('gh_token');
+    if(!token){
+      token = prompt('הזיני את GitHub Token שלך (פעם אחת בלבד):');
+      if(!token) return;
+      localStorage.setItem('gh_token', token);
+    }
+
+    publishBtn.disabled = true;
+    publishBtn.textContent = 'מפרסם...';
+
+    fetch('https://api.github.com/repos/'+REPO+'/contents/'+FILE+'?ref='+BRANCH, {
+      headers: { 'Authorization': 'token '+token, 'Accept': 'application/vnd.github.v3+json' }
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data.message){ throw new Error('טוקן לא תקין'); }
+      var sha = data.sha;
+      var htmlContent = document.documentElement.outerHTML;
+      var encoded = btoa(unescape(encodeURIComponent(htmlContent)));
+      return fetch('https://api.github.com/repos/'+REPO+'/contents/'+FILE, {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'token '+token,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message: 'עדכון מהפאנל', content: encoded, sha: sha, branch: BRANCH })
+      });
+    })
+    .then(function(r){
+      if(r.ok){
+        publishBtn.textContent = 'פורסם!';
+        setTimeout(function(){ publishBtn.disabled=false; publishBtn.innerHTML='&#9650; פרסם לאתר החי'; },3000);
+      } else { throw new Error('שגיאה'); }
+    })
+    .catch(function(e){
+      if(e.message==='טוקן לא תקין') localStorage.removeItem('gh_token');
+      publishBtn.textContent = 'שגיאה — נסי שוב';
+      publishBtn.disabled = false;
+      setTimeout(function(){ publishBtn.innerHTML='&#9650; פרסם לאתר החי'; },3000);
+    });
+  });
+})();
+
 // Embedded project images
 // Sub-images for home page
 (function(){
